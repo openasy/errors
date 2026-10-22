@@ -1,0 +1,35 @@
+# Errors. Applications send errors with a project key; they are grouped into issues (ADR 0042).
+#
+#   openssl rand -hex 32 > openasy-kek   # errors's key: sign-in secrets (ADR 0021). Keep it with your backups
+#   docker compose up -d
+#   docker compose logs errors | grep 'no owner yet'   # the one-time link that creates the owner account
+services:
+  errors:
+    image: ghcr.io/openasy/errors:0.1.0
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: [/tmp]
+    ports:
+      - "127.0.0.1:8080:8080"   # UI and API; put a TLS proxy in front to reach it from elsewhere
+    volumes:
+      - errors-data:/data   # SQLite database: projects, issues and their latest events
+    secrets:
+      - openasy-kek   # mounted at /run/secrets/openasy-kek
+    environment:
+      # The address people open Errors at; with a TLS proxy in front, its https:// URL.
+      ERRORS_PUBLIC_URL: ${ERRORS_PUBLIC_URL:-http://localhost:8080}
+      # Events a minute a project may send, unless it has its own limit.
+      ERRORS_RATE_LIMIT: ${ERRORS_RATE_LIMIT:-600}
+      # Sign in with your identity provider (OIDC), see the README:
+      # ERRORS_OIDC_ISSUER: https://login.example.com
+      # ERRORS_OIDC_CLIENT_ID: errors
+      # ERRORS_OIDC_CLIENT_SECRET: ${ERRORS_OIDC_CLIENT_SECRET}
+
+volumes:
+  errors-data:
+
+secrets:
+  openasy-kek:
+    file: ./openasy-kek
