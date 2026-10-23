@@ -74,7 +74,7 @@ volume and with your backups.
 | `ERRORS_RETENTION_DAYS` | `90` | Issues with no event for this long, and events older than it, are deleted |
 | `ERRORS_METRICS_PORT` | | Serve `/metrics` on this port only (ADR 0026) |
 | `ERRORS_HEADLESS` | `false` | `true` serves only the API |
-| `ERRORS_PASSWORD_SIGN_IN`, `ERRORS_OIDC_*` | | Sign-in, as in every OpenAsy product ([@openasy/auth](https://github.com/openasy/auth)). Owners can also add identity providers under Settings, Sign-in |
+| `ERRORS_PASSWORD_SIGN_IN`, `OPENASY_OIDC_*` | | Sign-in, as in every OpenAsy product ([@openasy/auth](https://github.com/openasy/auth)). Owners can also add identity providers under Settings, Sign-in |
 
 The container runs as non-root with a read-only root filesystem, no capabilities and `no-new-privileges`. The rate
 limit counts in memory: a restart gives every project a fresh minute.

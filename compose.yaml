@@ -23,9 +23,9 @@ services:
       # Events a minute a project may send, unless it has its own limit.
       ERRORS_RATE_LIMIT: ${ERRORS_RATE_LIMIT:-600}
       # Sign in with your identity provider (OIDC), see the README:
-      # ERRORS_OIDC_ISSUER: https://login.example.com
-      # ERRORS_OIDC_CLIENT_ID: errors
-      # ERRORS_OIDC_CLIENT_SECRET: ${ERRORS_OIDC_CLIENT_SECRET}
+      # OPENASY_OIDC_ISSUER: https://login.example.com
+      # OPENASY_OIDC_CLIENT_ID: errors
+      # OPENASY_OIDC_CLIENT_SECRET: ${OPENASY_OIDC_CLIENT_SECRET}
 
 volumes:
   errors-data:
