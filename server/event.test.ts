@@ -9,18 +9,33 @@ const fp = (body: object) => fingerprintOf(parse(body));
 
 describe("parseEvent", () => {
   it("fills what an application leaves out", () => {
-    expect(parse({ message: "boom" })).toMatchObject({ level: "error", environment: "production", release: null, userId: null, timestamp: "2026-10-22T12:00:00.000Z", tags: {}, request: null });
+    expect(parse({ message: "boom" })).toMatchObject({
+      level: "error",
+      environment: "production",
+      release: null,
+      userId: null,
+      timestamp: "2026-10-22T12:00:00.000Z",
+      tags: {},
+      request: null,
+    });
   });
 
   it("keeps only the page of a request, never bodies, cookies or headers", () => {
-    expect(parse({ message: "m", request: { url: "https://shop.example.com/cart?token=abc#x", method: "post" } }).request).toEqual({ url: "https://shop.example.com/cart", method: "POST" });
+    expect(parse({ message: "m", request: { url: "https://shop.example.com/cart?token=abc#x", method: "post" } }).request).toEqual({
+      url: "https://shop.example.com/cart",
+      method: "POST",
+    });
     expect(() => parse({ message: "m", request: { url: "https://a.example.com", body: "{}" } })).toThrow(/bodies, headers and cookies/);
     expect(() => parse({ message: "m", request: { url: "https://a.example.com", headers: {} } })).toThrow();
     expect(() => parse({ message: "m", user: { id: "1", email: "a@b.c" } })).toThrow(/names, emails/);
   });
 
   it("masks passwords and tokens in messages, values and tags", () => {
-    const e = parse({ message: "login failed password=hunter2 for Bearer abcdefghijklmnop", exception: { type: "E", value: "token=abc123 rejected" }, tags: { api_key: "k-123", plan: "secret=zzz" } });
+    const e = parse({
+      message: "login failed password=hunter2 for Bearer abcdefghijklmnop",
+      exception: { type: "E", value: "token=abc123 rejected" },
+      tags: { api_key: "k-123", plan: "secret=zzz" },
+    });
     expect(e.message).not.toMatch(/hunter2|abcdefghijklmnop/);
     expect(e.exception!.value).toBe("token=*** rejected");
     expect(e.tags).toEqual({ api_key: "***", plan: "secret=***" });
@@ -28,9 +43,21 @@ describe("parseEvent", () => {
   });
 
   it("refuses what does not fit the schema", () => {
-    for (const body of [[], "x", {}, { message: "m", level: "loud" }, { message: "m", extra: 1 }, { message: "m", timestamp: "yesterday" }, { message: "m", timestamp: "2027-12-01T00:00:00Z" },
-      { exception: { frames: [] } }, { exception: { type: "E", frames: "no" } }, { exception: { type: "E", frames: [{ function: "f" }] } }, { message: "m", tags: { "bad key": "1" } },
-      { message: "m", fingerprint: [] }, { message: "m", fingerprint: [1] }]) {
+    for (const body of [
+      [],
+      "x",
+      {},
+      { message: "m", level: "loud" },
+      { message: "m", extra: 1 },
+      { message: "m", timestamp: "yesterday" },
+      { message: "m", timestamp: "2027-12-01T00:00:00Z" },
+      { exception: { frames: [] } },
+      { exception: { type: "E", frames: "no" } },
+      { exception: { type: "E", frames: [{ function: "f" }] } },
+      { message: "m", tags: { "bad key": "1" } },
+      { message: "m", fingerprint: [] },
+      { message: "m", fingerprint: [1] },
+    ]) {
       expect(() => parse(body), JSON.stringify(body)).toThrow();
     }
   });

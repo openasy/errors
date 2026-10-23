@@ -45,7 +45,9 @@ async function call(method: string, path: string, init: RequestInit = {}, concre
   // A response is either inline or a $ref to components/responses; build the JSON pointer to its schema either way.
   const shared = declared!.$ref?.split("/").pop();
   const response = shared ? spec.components.responses[shared]! : declared!;
-  const at = shared ? `openapi#/components/responses/${shared}` : `openapi#/paths/${path.replaceAll("/", "~1")}/${method.toLowerCase()}/responses/${res.status}`;
+  const at = shared
+    ? `openapi#/components/responses/${shared}`
+    : `openapi#/paths/${path.replaceAll("/", "~1")}/${method.toLowerCase()}/responses/${res.status}`;
 
   if (!response.content) {
     expect(res.headers.get("content-length") ?? "0", `${method} ${path} ${res.status} should have no body`).toBe("0");
@@ -61,7 +63,10 @@ async function call(method: string, path: string, init: RequestInit = {}, concre
   return { res, body };
 }
 
-const auth = (token: string, body?: string, type = "application/json") => ({ headers: { authorization: `Bearer ${token}`, "content-type": type }, ...(body !== undefined && { body }) });
+const auth = (token: string, body?: string, type = "application/json") => ({
+  headers: { authorization: `Bearer ${token}`, "content-type": type },
+  ...(body !== undefined && { body }),
+});
 const admin = (body?: unknown) => auth(ADMIN_TOKEN, body === undefined ? undefined : typeof body === "string" ? body : JSON.stringify(body));
 
 describe("openapi.json", () => {
@@ -89,8 +94,15 @@ describe("responses match openapi.json", () => {
   let project = "";
   let key = "";
   let issue = "";
-  const event = { release: "1.0.0", user: { id: "u1" }, exception: { type: "TypeError", value: "x is undefined", frames: [{ filename: "src/cart.js", function: "total", lineno: 12, in_app: true }] } };
-  const withKey = (k: string, body: unknown) => ({ headers: { "x-errors-key": k, "content-type": "application/json" }, body: typeof body === "string" ? body : JSON.stringify(body) });
+  const event = {
+    release: "1.0.0",
+    user: { id: "u1" },
+    exception: { type: "TypeError", value: "x is undefined", frames: [{ filename: "src/cart.js", function: "total", lineno: 12, in_app: true }] },
+  };
+  const withKey = (k: string, body: unknown) => ({
+    headers: { "x-errors-key": k, "content-type": "application/json" },
+    body: typeof body === "string" ? body : JSON.stringify(body),
+  });
 
   it("product and health", async () => {
     await call("GET", "/api/v1/version");
@@ -145,7 +157,12 @@ describe("responses match openapi.json", () => {
   it("issues and releases", async () => {
     const { body } = await call("GET", "/api/v1/issues", admin());
     expect((body as { issues: unknown[] }).issues).toHaveLength(1);
-    await call("GET", "/api/v1/issues", admin(), `/api/v1/issues?project=${project}&status=unresolved&environment=production&release=1.0.0&q=cart&sort=events&limit=1`);
+    await call(
+      "GET",
+      "/api/v1/issues",
+      admin(),
+      `/api/v1/issues?project=${project}&status=unresolved&environment=production&release=1.0.0&q=cart&sort=events&limit=1`,
+    );
     await call("GET", "/api/v1/issues", admin(), "/api/v1/issues?status=gone");
     await call("GET", "/api/v1/issues", admin(), "/api/v1/issues?sort=loudest");
     await call("GET", "/api/v1/issues", admin(), "/api/v1/issues?project=missing");

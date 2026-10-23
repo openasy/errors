@@ -12,11 +12,11 @@ services:
     security_opt: ["no-new-privileges:true"]
     tmpfs: [/tmp]
     ports:
-      - "127.0.0.1:8080:8080"   # UI and API; put a TLS proxy in front to reach it from elsewhere
+      - "127.0.0.1:8080:8080" # UI and API; put a TLS proxy in front to reach it from elsewhere
     volumes:
-      - errors-data:/data   # SQLite database: projects, issues and their latest events
+      - errors-data:/data # SQLite database: projects, issues and their latest events
     secrets:
-      - openasy-kek   # mounted at /run/secrets/openasy-kek
+      - openasy-kek # mounted at /run/secrets/openasy-kek
     environment:
       # The address people open Errors at; with a TLS proxy in front, its https:// URL.
       ERRORS_PUBLIC_URL: ${ERRORS_PUBLIC_URL:-http://localhost:8080}

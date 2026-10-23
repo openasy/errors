@@ -85,7 +85,12 @@ export function parseEvent(body: unknown, now: () => number): Event {
         const filename = str(f.filename, "frame.filename", 500, true)!.replace(/[?#].*$/, "");
         if (f.lineno !== undefined && f.lineno !== null && !Number.isInteger(f.lineno)) throw bad("frame.lineno must be an integer.");
         if (f.in_app !== undefined && typeof f.in_app !== "boolean") throw bad("frame.in_app must be true or false.");
-        frames.push({ filename, function: str(f.function, "frame.function", 200), lineno: (f.lineno as number | null | undefined) ?? null, in_app: f.in_app ?? false });
+        frames.push({
+          filename,
+          function: str(f.function, "frame.function", 200),
+          lineno: (f.lineno as number | null | undefined) ?? null,
+          in_app: f.in_app ?? false,
+        });
       }
     }
     const value = str(e.value, "exception.value", 2000);
@@ -97,7 +102,8 @@ export function parseEvent(body: unknown, now: () => number): Event {
   if (body.tags !== undefined) {
     if (!isObj(body.tags) || Object.keys(body.tags).length > 20) throw bad("tags must be an object with at most 20 entries.");
     for (const [k, v] of Object.entries(body.tags)) {
-      if (!/^[A-Za-z0-9_.:-]{1,64}$/.test(k) || (typeof v !== "string" && typeof v !== "number" && typeof v !== "boolean")) throw bad("tag names are up to 64 letters, digits and _ . : -, and values are strings, numbers or booleans.");
+      if (!/^[A-Za-z0-9_.:-]{1,64}$/.test(k) || (typeof v !== "string" && typeof v !== "number" && typeof v !== "boolean"))
+        throw bad("tag names are up to 64 letters, digits and _ . : -, and values are strings, numbers or booleans.");
       tags[k] = SENSITIVE_TAG.test(k) ? "***" : mask(String(v).slice(0, 200));
     }
   }
@@ -109,7 +115,8 @@ export function parseEvent(body: unknown, now: () => number): Event {
   }
   let request: Event["request"] = null;
   if (body.request !== undefined) {
-    if (!isObj(body.request) || Object.keys(body.request).some((k) => k !== "url" && k !== "method")) throw bad("request may only hold a url and a method: bodies, headers and cookies are not kept.");
+    if (!isObj(body.request) || Object.keys(body.request).some((k) => k !== "url" && k !== "method"))
+      throw bad("request may only hold a url and a method: bodies, headers and cookies are not kept.");
     const raw = str(body.request.url, "request.url", 2048);
     const url = raw ? URL.parse(raw) : null;
     if (raw && !url) throw bad("request.url must be an address.");
@@ -118,11 +125,28 @@ export function parseEvent(body: unknown, now: () => number): Event {
 
   let fingerprint: string[] | null = null;
   if (body.fingerprint !== undefined) {
-    if (!Array.isArray(body.fingerprint) || body.fingerprint.length < 1 || body.fingerprint.length > 8 || body.fingerprint.some((p) => typeof p !== "string" || !p || p.length > 200)) throw bad("fingerprint must be a list of 1 to 8 strings.");
+    if (
+      !Array.isArray(body.fingerprint) ||
+      body.fingerprint.length < 1 ||
+      body.fingerprint.length > 8 ||
+      body.fingerprint.some((p) => typeof p !== "string" || !p || p.length > 200)
+    )
+      throw bad("fingerprint must be a list of 1 to 8 strings.");
     fingerprint = body.fingerprint as string[];
   }
   const environment = str(body.environment, "environment", 64) ?? "production";
-  return { timestamp, level, message: message ? mask(message) : null, exception, release: str(body.release, "release", 200), environment, userId, tags, request, fingerprint };
+  return {
+    timestamp,
+    level,
+    message: message ? mask(message) : null,
+    exception,
+    release: str(body.release, "release", 200),
+    environment,
+    userId,
+    tags,
+    request,
+    fingerprint,
+  };
 }
 
 /** Numbers, hex values, UUIDs and quoted text change from one occurrence to the next; the sentence does not. */

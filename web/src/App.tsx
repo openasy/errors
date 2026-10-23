@@ -30,7 +30,19 @@ import {
 import { AccountSettings, AuthGate, MembersSettings, SignInSettings, TokensSettings, useAuth } from "@openasy/auth/react";
 import { Bug, FolderKanban, KeyRound, LogIn, LogOut, Plus, RefreshCw, Settings2, Trash2, UserRound, Users } from "lucide-react";
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { api, MfaSetupRequired, Unauthorized, type Frame, type Issue, type IssueDetail, type IssueStatus, type Level, type ProductLink, type Project, type Summary } from "./api.ts";
+import {
+  api,
+  MfaSetupRequired,
+  Unauthorized,
+  type Frame,
+  type Issue,
+  type IssueDetail,
+  type IssueStatus,
+  type Level,
+  type ProductLink,
+  type Project,
+  type Summary,
+} from "./api.ts";
 import { useT } from "./i18n.ts";
 
 // Five levels of an application become the shared scale of four plus info.
@@ -93,7 +105,14 @@ function IssuesPage({ call, summary }: { call: Call; summary?: Summary }) {
   const [q, setQ] = useState("");
   const [rows, setRows] = useState<Issue[]>();
   const [more, setMore] = useState<string>();
-  useEffect(() => void call<{ projects: Project[] }>("/api/v1/projects?limit=500").then((r) => setProjects(r.projects), () => {}), [call]);
+  useEffect(
+    () =>
+      void call<{ projects: Project[] }>("/api/v1/projects?limit=500").then(
+        (r) => setProjects(r.projects),
+        () => {},
+      ),
+    [call],
+  );
 
   const query = useCallback(
     (cursor?: string) => {
@@ -107,7 +126,14 @@ function IssuesPage({ call, summary }: { call: Call; summary?: Summary }) {
     },
     [call, tab, sort, project, environment, release, q],
   );
-  const load = useCallback(() => void query().then((r) => (setRows(r.issues), setMore(r.nextCursor)), () => setRows([])), [query]);
+  const load = useCallback(
+    () =>
+      void query().then(
+        (r) => (setRows(r.issues), setMore(r.nextCursor)),
+        () => setRows([]),
+      ),
+    [query],
+  );
   useEffect(load, [load]);
   const loadMore = () => more && query(more).then((r) => (setRows((x) => [...(x ?? []), ...r.issues]), setMore(r.nextCursor)));
 
@@ -130,12 +156,29 @@ function IssuesPage({ call, summary }: { call: Call; summary?: Summary }) {
     { id: "events", header: t("issuesPage.events"), align: "right", sortValue: (i) => i.events, cell: (i) => i.events },
     { id: "users", header: t("issuesPage.users"), align: "right", sortValue: (i) => i.users, cell: (i) => i.users },
     { id: "project", header: t("issuesPage.project"), cell: (i) => <span className="text-xs">{i.project.name}</span> },
-    { id: "seen", header: t("issuesPage.lastSeen"), sortValue: (i) => i.lastSeen, cell: (i) => <span className="text-xs whitespace-nowrap">{ago(i.lastSeen)}</span> },
+    {
+      id: "seen",
+      header: t("issuesPage.lastSeen"),
+      sortValue: (i) => i.lastSeen,
+      cell: (i) => <span className="text-xs whitespace-nowrap">{ago(i.lastSeen)}</span>,
+    },
   ];
   const s = summary;
   return (
     <>
-      <PageHeader title={t("issuesPage.issues")} description={s ? t("issuesPage.inTheLastDayLast", { plural: t("plurals.project", { count: s.projects }), plural2: t("plurals.event", { count: s.events24h }), ago: ago(s.lastEventAt) }) : undefined} actions={<SearchInput label={t("issuesPage.searchTitleOrCode")} className="w-64" value={q} onChange={(e) => setQ(e.target.value)} />} />
+      <PageHeader
+        title={t("issuesPage.issues")}
+        description={
+          s
+            ? t("issuesPage.inTheLastDayLast", {
+                plural: t("plurals.project", { count: s.projects }),
+                plural2: t("plurals.event", { count: s.events24h }),
+                ago: ago(s.lastEventAt),
+              })
+            : undefined
+        }
+        actions={<SearchInput label={t("issuesPage.searchTitleOrCode")} className="w-64" value={q} onChange={(e) => setQ(e.target.value)} />}
+      />
       {s && (
         <KpiGrid minWidth={150}>
           <KpiCard label={t("issuesPage.unresolved")} value={s.issues.unresolved} tone={s.issues.unresolved ? "warning" : "success"} />
@@ -156,7 +199,12 @@ function IssuesPage({ call, summary }: { call: Call; summary?: Summary }) {
         ]}
       />
       <FilterBar onClear={() => (setProject(""), setEnvironment(""), setRelease(""), setQ(""))}>
-        <FacetFilter label={t("issuesPage.project")} selected={project ? [project] : []} onChange={(v) => setProject(v[v.length - 1] ?? "")} options={projects.map((p) => ({ value: p.id, label: p.name, count: p.unresolved }))} />
+        <FacetFilter
+          label={t("issuesPage.project")}
+          selected={project ? [project] : []}
+          onChange={(v) => setProject(v[v.length - 1] ?? "")}
+          options={projects.map((p) => ({ value: p.id, label: p.name, count: p.unresolved }))}
+        />
         <TextField label={t("issuesPage.environment")} value={environment} onChange={(e) => setEnvironment(e.target.value)} />
         <TextField label={t("issuesPage.release")} value={release} onChange={(e) => setRelease(e.target.value)} />
         <SelectField
@@ -194,7 +242,7 @@ function IssuesPage({ call, summary }: { call: Call; summary?: Summary }) {
             <EmptyState title={tab === "unresolved" ? t("issuesPage.noUnresolvedIssues") : t("issuesPage.noIssues", { tab })}>
               {s && s.issues.unresolved + s.issues.resolved + s.issues.ignored === 0 ? (
                 <>
-                  {t("issuesPage.nothingHasBeenSentYet")}{" "}<a href="/setup">{t("issuesPage.setup")}</a>.
+                  {t("issuesPage.nothingHasBeenSentYet")} <a href="/setup">{t("issuesPage.setup")}</a>.
                 </>
               ) : (
                 t("issuesPage.nothingMatchesTheseFilters")
@@ -216,7 +264,11 @@ function StackTrace({ frames }: { frames: Frame[] }) {
       {shown.map((f, n) => (
         <li key={n} className={f.in_app ? "text-fg" : "text-fg-muted"}>
           <span className="errors-wrap">
-            {f.function ?? "?"} <span className="text-fg-muted">in {f.filename}{f.lineno ? `:${f.lineno}` : ""}</span>
+            {f.function ?? "?"}{" "}
+            <span className="text-fg-muted">
+              in {f.filename}
+              {f.lineno ? `:${f.lineno}` : ""}
+            </span>
           </span>
           {f.in_app && <Badge>{t("stackTrace.yourCode")}</Badge>}
         </li>
@@ -247,12 +299,16 @@ function IssuePage({ call, id, reload }: { call: Call; id: string; reload: () =>
       setError((err as Error).message);
     }
   };
-  const remove = () => call(`/api/v1/issues/${id}`, { method: "DELETE" }).then(() => (reload(), navigate("/issues")), (err: Error) => setError(err.message));
+  const remove = () =>
+    call(`/api/v1/issues/${id}`, { method: "DELETE" }).then(
+      () => (reload(), navigate("/issues")),
+      (err: Error) => setError(err.message),
+    );
 
   if (issue === null)
     return (
       <EmptyState title={t("issuePage.issueNotFound")}>
-        {t("issuePage.itMayHaveBeenDeleted")}{" "}<a href="/issues">{t("issuePage.backToIssues")}</a>.
+        {t("issuePage.itMayHaveBeenDeleted")} <a href="/issues">{t("issuePage.backToIssues")}</a>.
       </EmptyState>
     );
   const latest = issue?.latestEvents[0];
@@ -298,19 +354,35 @@ function IssuePage({ call, id, reload }: { call: Call; id: string; reload: () =>
             <SeverityBadge severity={LEVEL[issue.level]} />
             <StatusLabel issue={issue} />
             {issue.resolvedIn && <Badge>{t("issuePage.fixMeantFor", { resolvedIn: issue.resolvedIn })}</Badge>}
-            {issue.regression && <Badge tone="danger">{t("issuePage.cameBack")}{issue.regression.in ? t("issuePage.in", { in: issue.regression.in }) : ""}</Badge>}
+            {issue.regression && (
+              <Badge tone="danger">
+                {t("issuePage.cameBack")}
+                {issue.regression.in ? t("issuePage.in", { in: issue.regression.in }) : ""}
+              </Badge>
+            )}
             {issue.environments.map((e) => (
               <Badge key={e}>{e}</Badge>
             ))}
           </div>
-          <Panel title={t("issuePage.latestEvent")} description={latest ? `${ago(latest.timestamp)}${latest.release ? ` · release ${latest.release}` : ""} · ${latest.environment}${latest.user ? ` · user ${latest.user.id}` : ""}` : undefined}>
+          <Panel
+            title={t("issuePage.latestEvent")}
+            description={
+              latest
+                ? `${ago(latest.timestamp)}${latest.release ? ` · release ${latest.release}` : ""} · ${latest.environment}${latest.user ? ` · user ${latest.user.id}` : ""}`
+                : undefined
+            }
+          >
             {latest?.exception ? (
               <div className="flex flex-col gap-2">
                 <span className="errors-wrap font-mono text-sm font-medium">
                   {latest.exception.type}
                   {latest.exception.value ? `: ${latest.exception.value}` : ""}
                 </span>
-                {latest.exception.frames.length ? <StackTrace frames={latest.exception.frames} /> : <span className="text-sm text-fg-muted">{t("issuePage.noStackTraceWasSent")}</span>}
+                {latest.exception.frames.length ? (
+                  <StackTrace frames={latest.exception.frames} />
+                ) : (
+                  <span className="text-sm text-fg-muted">{t("issuePage.noStackTraceWasSent")}</span>
+                )}
               </div>
             ) : (
               <Code>{latest?.message ?? ""}</Code>
@@ -379,7 +451,12 @@ function IssuePage({ call, id, reload }: { call: Call; id: string; reload: () =>
           </>
         }
       >
-        <TextField label={t("issuePage.fixedInRelease")} value={release} onChange={(e) => setRelease(e.target.value)} hint={t("issuePage.optionalForExample14")} />
+        <TextField
+          label={t("issuePage.fixedInRelease")}
+          value={release}
+          onChange={(e) => setRelease(e.target.value)}
+          hint={t("issuePage.optionalForExample14")}
+        />
       </Dialog>
     </>
   );
@@ -396,7 +473,14 @@ function ProjectsPage({ call, reload }: { call: Call; reload: () => void }) {
   const [name, setName] = useState("");
   const [error, setError] = useState<string>();
   const [shown, setShown] = useState<Project>();
-  const load = useCallback(() => void call<{ projects: Project[] }>("/api/v1/projects?limit=500").then((r) => setRows(r.projects), () => setRows([])), [call]);
+  const load = useCallback(
+    () =>
+      void call<{ projects: Project[] }>("/api/v1/projects?limit=500").then(
+        (r) => setRows(r.projects),
+        () => setRows([]),
+      ),
+    [call],
+  );
   useEffect(load, [load]);
   const close = () => (setAdding(false), setName(""), setError(undefined));
 
@@ -412,8 +496,16 @@ function ProjectsPage({ call, reload }: { call: Call; reload: () => void }) {
       setError((err as Error).message);
     }
   };
-  const rotate = (p: Project) => call<Project>(`/api/v1/projects/${p.id}/key`, { method: "POST" }).then((r) => (setShown(r), load()), () => {});
-  const remove = (p: Project) => call(`/api/v1/projects/${p.id}`, { method: "DELETE" }).then(() => (load(), reload()), () => {});
+  const rotate = (p: Project) =>
+    call<Project>(`/api/v1/projects/${p.id}/key`, { method: "POST" }).then(
+      (r) => (setShown(r), load()),
+      () => {},
+    );
+  const remove = (p: Project) =>
+    call(`/api/v1/projects/${p.id}`, { method: "DELETE" }).then(
+      () => (load(), reload()),
+      () => {},
+    );
 
   const columns: Column<Project>[] = [
     { id: "name", header: t("projectsPage.project"), sortValue: (p) => p.name, cell: (p) => <span className="font-medium">{p.name}</span> },
@@ -453,7 +545,19 @@ function ProjectsPage({ call, reload }: { call: Call; reload: () => void }) {
         }
       />
       <Panel flush>
-        <DataTable label={t("projectsPage.projects")} columns={columns} rows={rows ?? []} loading={!rows} getRowId={(p) => p.id} minWidth={760} empty={<EmptyState title={t("projectsPage.noProjectsYet")}>{can("admin") ? t("projectsPage.addTheFirstApplication") : t("projectsPage.anAdminAddsTheApplications")}</EmptyState>} />
+        <DataTable
+          label={t("projectsPage.projects")}
+          columns={columns}
+          rows={rows ?? []}
+          loading={!rows}
+          getRowId={(p) => p.id}
+          minWidth={760}
+          empty={
+            <EmptyState title={t("projectsPage.noProjectsYet")}>
+              {can("admin") ? t("projectsPage.addTheFirstApplication") : t("projectsPage.anAdminAddsTheApplications")}
+            </EmptyState>
+          }
+        />
       </Panel>
       <Dialog
         open={adding}
@@ -472,7 +576,13 @@ function ProjectsPage({ call, reload }: { call: Call; reload: () => void }) {
           </>
         }
       >
-        <TextField label={t("projectsPage.name")} value={name} onChange={(e) => setName(e.target.value)} hint={t("projectsPage.lettersDigitsAnd")} error={error} />
+        <TextField
+          label={t("projectsPage.name")}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          hint={t("projectsPage.lettersDigitsAnd")}
+          error={error}
+        />
       </Dialog>
       <Dialog
         open={!!shown}
@@ -526,7 +636,11 @@ function WelcomePage() {
   const t = useT();
   return (
     <>
-      <PageHeader title={t("welcomePage.getStarted")} description={t("welcomePage.addAProjectCopyIts")} actions={<StatusBadge tone="info">{t("welcomePage.waitingForTheFirstProject")}</StatusBadge>} />
+      <PageHeader
+        title={t("welcomePage.getStarted")}
+        description={t("welcomePage.addAProjectCopyIts")}
+        actions={<StatusBadge tone="info">{t("welcomePage.waitingForTheFirstProject")}</StatusBadge>}
+      />
       <SetupPage />
     </>
   );
@@ -541,8 +655,14 @@ function SettingsPage({ page }: { page: "account" | "members" | "signin" | "toke
   if (page !== "account" && !can("admin")) return <EmptyState title={t("settingsPage.adminsOnly")}>{t("settingsPage.askAnAdminOfThis")}</EmptyState>;
   const titles = {
     account: ["Account", "Your profile, password, two-step verification and where you are signed in."],
-    members: ["Members", "Who can sign in to this errors, and with which role. Viewers see everything; editors also resolve and ignore issues; admins also manage projects, members and tokens."],
-    signin: ["Sign-in", "Identity providers people can sign in with, such as OpenAsy Identity, Keycloak or Microsoft Entra ID, and which of their groups give which role."],
+    members: [
+      "Members",
+      "Who can sign in to this errors, and with which role. Viewers see everything; editors also resolve and ignore issues; admins also manage projects, members and tokens.",
+    ],
+    signin: [
+      "Sign-in",
+      "Identity providers people can sign in with, such as OpenAsy Identity, Keycloak or Microsoft Entra ID, and which of their groups give which role.",
+    ],
     tokens: ["API tokens", "For scripts. Each token has one role and an expiry; the secret is shown once."],
   } as const;
   return (
@@ -575,7 +695,8 @@ function Product() {
   // The install's other products (OPENASY_PRODUCTS), for the switcher; ids this UI does not know are left out.
   useEffect(() => {
     void call<{ products: ProductLink[] }>("/api/v1/products").then(
-      (r) => setProducts(r.products.filter((p): p is ProductLink & { id: ProductId } => p.id !== "errors" && (PRODUCT_IDS as readonly string[]).includes(p.id))),
+      (r) =>
+        setProducts(r.products.filter((p): p is ProductLink & { id: ProductId } => p.id !== "errors" && (PRODUCT_IDS as readonly string[]).includes(p.id))),
       () => {},
     );
   }, [call]);

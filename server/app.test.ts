@@ -12,7 +12,13 @@ afterAll(() => app.close());
 
 const json = async (res: Response) => (await res.json()) as any;
 const frames = (...f: Array<[string, string, boolean?]>) => f.map(([filename, fn, in_app = true]) => ({ filename, function: fn, lineno: 10, in_app }));
-const cartError = (over: object = {}) => ({ exception: { type: "TypeError", value: "x is undefined", frames: frames(["lib/x.js", "run", false], ["src/cart.js", "total"], ["src/app.js", "handle"]) }, release: "1.0.0", environment: "production", user: { id: "u1" }, ...over });
+const cartError = (over: object = {}) => ({
+  exception: { type: "TypeError", value: "x is undefined", frames: frames(["lib/x.js", "run", false], ["src/cart.js", "total"], ["src/app.js", "handle"]) },
+  release: "1.0.0",
+  environment: "production",
+  user: { id: "u1" },
+  ...over,
+});
 const at = (minutes: number) => new Date(app.clock() + minutes * 60_000).toISOString();
 
 describe("projects and keys", () => {
@@ -30,7 +36,11 @@ describe("projects and keys", () => {
 
   it("takes the key as a header or a bearer token, and refuses anything else", async () => {
     expect((await app.send(shop.key, { message: "a" })).status).toBe(201);
-    const bearer = await fetch(`${app.base}/api/v1/events`, { method: "POST", body: JSON.stringify({ message: "b" }), headers: { authorization: `Bearer ${shop.key}` } });
+    const bearer = await fetch(`${app.base}/api/v1/events`, {
+      method: "POST",
+      body: JSON.stringify({ message: "b" }),
+      headers: { authorization: `Bearer ${shop.key}` },
+    });
     expect(bearer.status).toBe(201);
     for (const key of ["", "ek_wrong", "nope", `${shop.key}0`]) expect((await app.send(key, { message: "c" })).status, key).toBe(401);
     // An admin's token is not a project key: people cannot send events as a project by accident.
@@ -53,12 +63,31 @@ describe("events become issues", () => {
   it("groups events, counts them and the people they hit, and keeps the first and last time", async () => {
     const first = await json(await app.send(shop.key, cartError({ timestamp: at(0), user: { id: "u1" } })));
     expect(first).toMatchObject({ issue: { new: true, regression: false } });
-    const again = await json(await app.send(shop.key, cartError({ timestamp: at(5), user: { id: "u2" }, exception: { type: "TypeError", value: "y is undefined", frames: frames(["src/cart.js", "total"], ["src/app.js", "handle"]) } })));
+    const again = await json(
+      await app.send(
+        shop.key,
+        cartError({
+          timestamp: at(5),
+          user: { id: "u2" },
+          exception: { type: "TypeError", value: "y is undefined", frames: frames(["src/cart.js", "total"], ["src/app.js", "handle"]) },
+        }),
+      ),
+    );
     expect(again.issue).toMatchObject({ id: first.issue.id, new: false });
     await app.send(shop.key, cartError({ timestamp: at(9), user: { id: "u2" } }));
     const issues = (await json(await app.admin(`/api/v1/issues?project=${shop.id}&status=unresolved&sort=events`))).issues;
     const cart = issues.find((i: { id: string }) => i.id === first.issue.id);
-    expect(cart).toMatchObject({ title: expect.stringContaining("TypeError"), culprit: "handle (src/app.js:10)", events: 3, users: 2, status: "unresolved", firstSeen: at(0), lastSeen: at(9), regression: null, project: { name: "shop" } });
+    expect(cart).toMatchObject({
+      title: expect.stringContaining("TypeError"),
+      culprit: "handle (src/app.js:10)",
+      events: 3,
+      users: 2,
+      status: "unresolved",
+      firstSeen: at(0),
+      lastSeen: at(9),
+      regression: null,
+      project: { name: "shop" },
+    });
     // The same type somewhere else is another issue.
     const other = await json(await app.send(shop.key, { exception: { type: "TypeError", value: "x", frames: frames(["src/other.js", "go"]) } }));
     expect(other.issue).toMatchObject({ new: true });
@@ -77,23 +106,36 @@ describe("events become issues", () => {
 
   it("tracks releases, environments and where an issue appeared", async () => {
     const p = await app.project("api");
-    const send = (release: string, env: string, over: object = {}) => app.send(p.key, { exception: { type: "Error", value: "boom", frames: frames(["src/a.js", "f"]) }, release, environment: env, ...over });
+    const send = (release: string, env: string, over: object = {}) =>
+      app.send(p.key, { exception: { type: "Error", value: "boom", frames: frames(["src/a.js", "f"]) }, release, environment: env, ...over });
     const first = await json(await send("1.0.0", "staging"));
     await send("1.1.0", "production");
     await send("1.1.0", "production", { exception: { type: "Other", value: "x", frames: frames(["src/b.js", "g"]) } });
     const issue = await json(await app.admin(`/api/v1/issues/${first.issue.id}`));
     expect(issue.environments).toEqual(["production", "staging"]);
-    expect(issue.releases.map((r: { release: string; events: number }) => [r.release, r.events])).toEqual([["1.0.0", 1], ["1.1.0", 1]]);
+    expect(issue.releases.map((r: { release: string; events: number }) => [r.release, r.events])).toEqual([
+      ["1.0.0", 1],
+      ["1.1.0", 1],
+    ]);
     expect((await json(await app.admin(`/api/v1/issues?project=${p.id}&release=1.1.0`))).issues).toHaveLength(2);
     expect((await json(await app.admin(`/api/v1/issues?project=${p.id}&release=1.0.0`))).issues).toHaveLength(1);
     expect((await json(await app.admin(`/api/v1/issues?project=${p.id}&environment=staging`))).issues).toHaveLength(1);
     const releases = (await json(await app.admin(`/api/v1/releases?project=${p.id}`))).releases;
-    expect(releases.map((r: { release: string; newIssues: number; issues: number }) => [r.release, r.newIssues, r.issues]).sort()).toEqual([["1.0.0", 1, 1], ["1.1.0", 1, 2]]);
+    expect(releases.map((r: { release: string; newIssues: number; issues: number }) => [r.release, r.newIssues, r.issues]).sort()).toEqual([
+      ["1.0.0", 1, 1],
+      ["1.1.0", 1, 2],
+    ]);
   });
 
   it("never stores request bodies, cookies or the secrets in a message", async () => {
     const p = await app.project("private");
-    const sent = await json(await app.send(p.key, { message: "login password=hunter2 failed", request: { url: "https://shop.example.com/login?token=abc", method: "post" }, tags: { session_id: "s-1" } }));
+    const sent = await json(
+      await app.send(p.key, {
+        message: "login password=hunter2 failed",
+        request: { url: "https://shop.example.com/login?token=abc", method: "post" },
+        tags: { session_id: "s-1" },
+      }),
+    );
     const dump = JSON.stringify(app.db.prepare("SELECT * FROM events").all()) + JSON.stringify(await json(await app.admin(`/api/v1/issues/${sent.issue.id}`)));
     expect(dump).not.toMatch(/hunter2|token=abc|s-1/);
     expect((await app.send(p.key, { message: "m", request: { url: "https://a.example.com", body: "{}" } })).status).toBe(422);
@@ -111,7 +153,9 @@ describe("events become issues", () => {
 });
 
 describe("resolving and regressions", () => {
-  const issueOf = async (key: string, over: object = {}) => (await json(await app.send(key, { exception: { type: "Error", value: "pay", frames: frames(["src/pay.js", "charge"]) }, release: "2.0.0", ...over }))).issue.id as string;
+  const issueOf = async (key: string, over: object = {}) =>
+    (await json(await app.send(key, { exception: { type: "Error", value: "pay", frames: frames(["src/pay.js", "charge"]) }, release: "2.0.0", ...over }))).issue
+      .id as string;
   const patch = (id: string, body: unknown) => app.admin(`/api/v1/issues/${id}`, { method: "PATCH", body: JSON.stringify(body) });
 
   it("reopens a resolved issue when it happens again, as a regression in the release it came back in", async () => {
@@ -122,7 +166,12 @@ describe("resolving and regressions", () => {
     expect((await json(await app.admin(`/api/v1/issues?project=${p.id}&status=unresolved`))).issues).toEqual([]);
     const back = await json(await app.send(p.key, { exception: { type: "Error", value: "pay", frames: frames(["src/pay.js", "charge"]) }, release: "2.2.0" }));
     expect(back.issue).toMatchObject({ id, new: false, regression: true });
-    expect(await json(await app.admin(`/api/v1/issues/${id}`))).toMatchObject({ status: "unresolved", regression: { in: "2.2.0" }, resolvedIn: "2.1.0", resolvedAt: null });
+    expect(await json(await app.admin(`/api/v1/issues/${id}`))).toMatchObject({
+      status: "unresolved",
+      regression: { in: "2.2.0" },
+      resolvedIn: "2.1.0",
+      resolvedAt: null,
+    });
     // The release the fix was meant for stays on the issue, so it reads: fixed in 2.1.0, back in 2.2.0.
     expect((await json(await app.admin("/api/v1/summary"))).regressions).toBeGreaterThanOrEqual(1);
   });
@@ -131,7 +180,10 @@ describe("resolving and regressions", () => {
     const p = await app.project("pay2");
     const id = await issueOf(p.key);
     await patch(id, { status: "resolved", release: "2.0.0" });
-    expect((await json(await app.send(p.key, { exception: { type: "Error", value: "pay", frames: frames(["src/pay.js", "charge"]) }, release: "2.0.0" }))).issue.regression).toBe(true);
+    expect(
+      (await json(await app.send(p.key, { exception: { type: "Error", value: "pay", frames: frames(["src/pay.js", "charge"]) }, release: "2.0.0" }))).issue
+        .regression,
+    ).toBe(true);
     // Resolving again clears the mark.
     expect(await json(await patch(id, { status: "resolved" }))).toMatchObject({ regression: null, resolvedIn: null });
   });
@@ -140,7 +192,9 @@ describe("resolving and regressions", () => {
     const p = await app.project("pay3");
     const id = await issueOf(p.key);
     await patch(id, { status: "ignored" });
-    expect((await json(await app.send(p.key, { exception: { type: "Error", value: "pay", frames: frames(["src/pay.js", "charge"]) } }))).issue).toMatchObject({ regression: false });
+    expect((await json(await app.send(p.key, { exception: { type: "Error", value: "pay", frames: frames(["src/pay.js", "charge"]) } }))).issue).toMatchObject({
+      regression: false,
+    });
     expect(await json(await app.admin(`/api/v1/issues/${id}`))).toMatchObject({ status: "ignored", events: 2 });
     expect(await json(await patch(id, { status: "unresolved" }))).toMatchObject({ status: "unresolved" });
   });
@@ -148,7 +202,8 @@ describe("resolving and regressions", () => {
   it("refuses what is not a status", async () => {
     const p = await app.project("pay4");
     const id = await issueOf(p.key);
-    for (const body of [{}, { status: "fixed" }, { status: "ignored", release: "1" }, { status: "resolved", release: "" }, { status: "resolved", extra: 1 }]) expect((await patch(id, body)).status, JSON.stringify(body)).toBe(422);
+    for (const body of [{}, { status: "fixed" }, { status: "ignored", release: "1" }, { status: "resolved", release: "" }, { status: "resolved", extra: 1 }])
+      expect((await patch(id, body)).status, JSON.stringify(body)).toBe(422);
     expect((await patch("missing", { status: "resolved" })).status).toBe(404);
   });
 });
@@ -178,7 +233,13 @@ describe("rate limit", () => {
 describe("access", () => {
   it("lets viewers read, editors decide and admins manage", async () => {
     const anon = (path: string, init: RequestInit = {}) => fetch(app.base + path, init);
-    for (const [m, p] of [["GET", "/api/v1/issues"], ["GET", "/api/v1/projects"], ["POST", "/api/v1/projects"], ["PATCH", "/api/v1/issues/x"], ["GET", "/api/v1/summary"]] as const) {
+    for (const [m, p] of [
+      ["GET", "/api/v1/issues"],
+      ["GET", "/api/v1/projects"],
+      ["POST", "/api/v1/projects"],
+      ["PATCH", "/api/v1/issues/x"],
+      ["GET", "/api/v1/summary"],
+    ] as const) {
       expect((await anon(p, { method: m })).status, `${m} ${p}`).toBe(401);
     }
     expect(await json(await anon("/api/v1/version"))).toEqual({ product: "errors", version: "0.1.0" });
@@ -195,7 +256,9 @@ describe("access", () => {
     expect((await app.admin(`/api/v1/issues/${id}`)).status).toBe(404);
     await app.send(p.key, { message: "again" });
     expect((await app.admin(`/api/v1/projects/${p.id}`, { method: "DELETE" })).status).toBe(204);
-    expect(app.db.prepare("SELECT (SELECT COUNT(*) FROM issues WHERE project_id = ?) + (SELECT COUNT(*) FROM releases WHERE project_id = ?) AS n").get(p.id, p.id)).toEqual({ n: 0 });
+    expect(
+      app.db.prepare("SELECT (SELECT COUNT(*) FROM issues WHERE project_id = ?) + (SELECT COUNT(*) FROM releases WHERE project_id = ?) AS n").get(p.id, p.id),
+    ).toEqual({ n: 0 });
   });
 
   it("purges what is older than the retention", async () => {

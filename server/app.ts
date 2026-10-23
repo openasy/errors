@@ -68,7 +68,8 @@ function send(res: ServerResponse, status: number, body: string | Buffer, type =
   res.end(body);
 }
 
-const json = (res: ServerResponse, status: number, data: unknown, headers?: Record<string, string>) => send(res, status, JSON.stringify(data), "application/json", headers);
+const json = (res: ServerResponse, status: number, data: unknown, headers?: Record<string, string>) =>
+  send(res, status, JSON.stringify(data), "application/json", headers);
 
 const TITLES: Record<ProblemCode, string> = {
   "invalid-token": "Invalid token",
@@ -123,7 +124,8 @@ async function readBody(req: IncomingMessage, limit: number): Promise<Buffer> {
 
 async function readJson(req: IncomingMessage, limit = 64 * 1024): Promise<Record<string, unknown>> {
   const raw = await readBody(req, limit).catch((err: unknown) => {
-    if (err instanceof ErrorsError && err.code === "payload-too-large") throw new ErrorsError(400, "invalid-json", `The body must be JSON, at most ${Math.round(limit / 1024)} KiB.`);
+    if (err instanceof ErrorsError && err.code === "payload-too-large")
+      throw new ErrorsError(400, "invalid-json", `The body must be JSON, at most ${Math.round(limit / 1024)} KiB.`);
     throw err;
   });
   try {
@@ -163,9 +165,11 @@ interface Route {
 
 function issueFilter(url: URL, projectId?: string): IssueFilter {
   const status = url.searchParams.get("status");
-  if (status !== null && status !== "unresolved" && status !== "resolved" && status !== "ignored") throw new ErrorsError(422, "invalid-body", "status must be unresolved, resolved or ignored.");
+  if (status !== null && status !== "unresolved" && status !== "resolved" && status !== "ignored")
+    throw new ErrorsError(422, "invalid-body", "status must be unresolved, resolved or ignored.");
   const sort = url.searchParams.get("sort") ?? "lastSeen";
-  if (sort !== "lastSeen" && sort !== "firstSeen" && sort !== "events" && sort !== "users") throw new ErrorsError(422, "invalid-body", "sort must be lastSeen, firstSeen, events or users.");
+  if (sort !== "lastSeen" && sort !== "firstSeen" && sort !== "events" && sort !== "users")
+    throw new ErrorsError(422, "invalid-body", "sort must be lastSeen, firstSeen, events or users.");
   const q = url.searchParams.get("q")?.trim();
   if (q && q.length > 128) throw new ErrorsError(422, "invalid-body", "q must be at most 128 characters.");
   const one = (name: string) => {
@@ -173,7 +177,14 @@ function issueFilter(url: URL, projectId?: string): IssueFilter {
     if (v !== null && (v.length < 1 || v.length > 200)) throw new ErrorsError(422, "invalid-body", `${name} must be 1 to 200 characters.`);
     return v ?? undefined;
   };
-  return { projectId: projectId ?? one("project"), status: (status as Status | null) ?? undefined, environment: one("environment"), release: one("release"), q: q || undefined, sort };
+  return {
+    projectId: projectId ?? one("project"),
+    status: (status as Status | null) ?? undefined,
+    environment: one("environment"),
+    release: one("release"),
+    q: q || undefined,
+    sort,
+  };
 }
 
 export function createApp({ db, errors, version, auth, adminToken, webDir, docsDir, openapi, serveMetrics = true, products = [] }: AppOptions) {
@@ -184,7 +195,8 @@ export function createApp({ db, errors, version, auth, adminToken, webDir, docsD
   };
   const cursor = (url: URL) => url.searchParams.get("cursor") ?? undefined;
   const limit = (url: URL) => parseLimit(url.searchParams.get("limit"));
-  const page = <K extends string, T>(key: K, p: { items: T[]; nextCursor?: string }) => ({ [key]: p.items, ...(p.nextCursor && { nextCursor: p.nextCursor }) }) as Record<K, T[]> & { nextCursor?: string };
+  const page = <K extends string, T>(key: K, p: { items: T[]; nextCursor?: string }) =>
+    ({ [key]: p.items, ...(p.nextCursor && { nextCursor: p.nextCursor }) }) as Record<K, T[]> & { nextCursor?: string };
 
   const routes: Route[] = [
     { method: "GET", path: "/api/v1/version", auth: "none", handle: () => ({ product: "errors", version }) },
@@ -223,7 +235,12 @@ export function createApp({ db, errors, version, auth, adminToken, webDir, docsD
     { method: "DELETE", path: "/api/v1/issues/:id", auth: "admin", handle: ({ res, params }) => (errors.deleteIssue(params[0]!), noContent(res)) },
 
     // Releases, as they were seen in events.
-    { method: "GET", path: "/api/v1/releases", auth: "viewer", handle: ({ url }) => page("releases", errors.releases(url.searchParams.get("project") ?? undefined, cursor(url), limit(url))) },
+    {
+      method: "GET",
+      path: "/api/v1/releases",
+      auth: "viewer",
+      handle: ({ url }) => page("releases", errors.releases(url.searchParams.get("project") ?? undefined, cursor(url), limit(url))),
+    },
   ];
 
   const compiled = routes.map((r) => ({ ...r, re: new RegExp(`^${r.path.replace(/:[a-z]+/g, "([^/]+)")}$`) }));
@@ -235,7 +252,8 @@ export function createApp({ db, errors, version, auth, adminToken, webDir, docsD
       const header = req.headers.authorization;
       const key = (req.headers["x-errors-key"] as string | undefined) ?? (header?.startsWith("Bearer ek_") ? header.slice(7) : undefined);
       const project = errors.projectOfKey(key);
-      if (!project) throw new ErrorsError(401, "invalid-token", "Send a project key in x-errors-key, or as a bearer token. A key is shown when its project is created.");
+      if (!project)
+        throw new ErrorsError(401, "invalid-token", "Send a project key in x-errors-key, or as a bearer token. A key is shown when its project is created.");
       return project;
     }
     if (tokenMatches(req.headers.authorization, adminToken)) return null;

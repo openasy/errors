@@ -27,11 +27,20 @@ export async function startApp(opts: Partial<AppOptions> & { version: string; er
   const base = `http://localhost:${(server.address() as AddressInfo).port}`;
   const auth = createAuth({ db, product: "errors", productName: "OpenAsy Errors", origin: base });
   handler = createApp({ db, errors, auth, adminToken: ADMIN_TOKEN, ...rest });
-  const admin = (path: string, init: RequestInit = {}) => fetch(base + path, { ...init, headers: { authorization: `Bearer ${ADMIN_TOKEN}`, "content-type": "application/json", ...init.headers } });
+  const admin = (path: string, init: RequestInit = {}) =>
+    fetch(base + path, { ...init, headers: { authorization: `Bearer ${ADMIN_TOKEN}`, "content-type": "application/json", ...init.headers } });
   /** Sends an event the way an application does, with a project key. */
   const send = (key: string, event: unknown, headers: Record<string, string> = {}) =>
-    fetch(`${base}/api/v1/events`, { method: "POST", body: typeof event === "string" || Buffer.isBuffer(event) ? (event as string) : JSON.stringify(event), headers: { "x-errors-key": key, "content-type": "application/json", ...headers } });
-  const project = async (name: string, rateLimit?: number) => (await (await admin("/api/v1/projects", { method: "POST", body: JSON.stringify({ name, ...(rateLimit && { rateLimit }) }) })).json()) as { id: string; key: string };
+    fetch(`${base}/api/v1/events`, {
+      method: "POST",
+      body: typeof event === "string" || Buffer.isBuffer(event) ? (event as string) : JSON.stringify(event),
+      headers: { "x-errors-key": key, "content-type": "application/json", ...headers },
+    });
+  const project = async (name: string, rateLimit?: number) =>
+    (await (await admin("/api/v1/projects", { method: "POST", body: JSON.stringify({ name, ...(rateLimit && { rateLimit }) }) })).json()) as {
+      id: string;
+      key: string;
+    };
   const close = () => new Promise<void>((resolve) => server.close(() => resolve()));
   return { db, errors, auth, base, admin, send, project, clock, close };
 }
