@@ -28,6 +28,7 @@ import {
   useAgo,
 } from "@openasy/ui";
 import { AccountSettings, AuthGate, MembersSettings, SignInSettings, TokensSettings, useAuth, useInstallBrand } from "@openasy/auth/react";
+import colophon from "virtual:openasy-colophon";
 import { Bug, FolderKanban, KeyRound, LogIn, LogOut, Plus, RefreshCw, Settings2, Trash2, UserRound, Users } from "lucide-react";
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import {
@@ -48,7 +49,7 @@ import { useT } from "./i18n.ts";
 // Five levels of an application become the shared scale of four plus info.
 const LEVEL: Record<Level, UiSeverity> = { fatal: "critical", error: "high", warning: "medium", info: "low", debug: "info" };
 
-const PAGES = ["projects", "setup", "account", "members", "signin", "tokens"] as const;
+const PAGES = ["projects", "setup", "account", "members", "signin", "tokens", "about"] as const;
 type Route = { page: "issues" | (typeof PAGES)[number] } | { page: "issue"; id: string };
 /** The first path segments that are pages of this UI, for followLinks. */
 export const PATHS = ["issues", ...PAGES];
@@ -729,6 +730,7 @@ function Product() {
   return (
     <AppShell
       product="errors"
+      about={colophon}
       nav={nav}
       activeNav={active}
       onNavigate={(id) => navigate(`/${id}`)}
