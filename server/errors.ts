@@ -399,6 +399,54 @@ export function createErrors(db: DatabaseSync, { retentionDays = 90, defaultRate
         ),
       };
     },
+    /**
+     * What the overview draws besides the summary: issues first seen on each of the last 14 days, unresolved ones by
+     * level and by project, and the unresolved issues with the most events in the last 7 days.
+     */
+    overview() {
+      const days = lastDays(14, clock());
+      const first = new Map(
+        (
+          db.prepare("SELECT substr(first_seen, 1, 10) AS d, COUNT(*) AS n FROM issues WHERE first_seen >= ? GROUP BY d").all(days[0]!) as Array<{
+            d: string;
+            n: number;
+          }>
+        ).map((r) => [r.d, r.n]),
+      );
+      const byLevel = (
+        db.prepare("SELECT level, COUNT(*) AS n FROM issues WHERE status = 'unresolved' GROUP BY level ORDER BY n DESC").all() as Array<{
+          level: string;
+          n: number;
+        }>
+      ).map((r) => ({ level: r.level, unresolved: r.n }));
+      const byProject = (
+        db
+          .prepare(
+            "SELECT p.id, p.name, COUNT(i.id) AS n FROM projects p JOIN issues i ON i.project_id = p.id AND i.status = 'unresolved' GROUP BY p.id ORDER BY n DESC, p.name LIMIT 8",
+          )
+          .all() as Array<{ id: string; name: string; n: number }>
+      ).map((r) => ({ id: r.id, name: r.name, unresolved: r.n }));
+      const week = lastDays(7, clock())[0]!;
+      const topIssues = (
+        db
+          .prepare(
+            `SELECT i.id, i.title, i.culprit, i.level, i.users, i.regression, p.name AS project, SUM(d.events) AS n
+             FROM issues i JOIN issue_days d ON d.issue_id = i.id JOIN projects p ON p.id = i.project_id
+             WHERE i.status = 'unresolved' AND d.day >= ? GROUP BY i.id ORDER BY n DESC, i.last_seen DESC LIMIT 8`,
+          )
+          .all(week) as Array<Record<string, any>>
+      ).map((r) => ({
+        id: r.id as string,
+        title: r.title as string,
+        culprit: (r.culprit as string | null) ?? null,
+        level: r.level as string,
+        project: r.project as string,
+        users: r.users as number,
+        regression: r.regression === 1,
+        events7d: r.n as number,
+      }));
+      return { newIssues: days.map((day) => ({ day, issues: first.get(day) ?? 0 })), byLevel, byProject, topIssues };
+    },
     projectCount: () => (db.prepare("SELECT COUNT(*) AS n FROM projects").get() as { n: number }).n,
     issueTotals: () => {
       const out: Record<string, number> = { unresolved: 0, resolved: 0, ignored: 0 };

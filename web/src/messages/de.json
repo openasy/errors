@@ -1,4 +1,17 @@
 {
+  "overviewPage": {
+    "overview": "Übersicht",
+    "byLevel": "Ungelöst nach Stufe",
+    "byLevelDetail": "Ungelöste Fehler nach der Stufe, die ihre Ereignisse melden.",
+    "unresolved": "ungelöst",
+    "newIssues": "Neue Fehler",
+    "newIssuesDetail": "An jedem der letzten 14 Tage zuerst gesehene Fehler.",
+    "byProject": "Ungelöst nach Projekt",
+    "byProjectDetail": "Die Projekte mit den meisten ungelösten Fehlern.",
+    "busiest": "Aktivste Fehler",
+    "busiestDetail": "Ungelöste Fehler mit den meisten Ereignissen in den letzten 7 Tagen.",
+    "events7Days": "Ereignisse, 7 Tage"
+  },
   "statusLabel": {
     "regression": "Regression",
     "resolved": "Gelöst",
@@ -130,6 +143,7 @@
     "signOut": "Abmelden"
   },
   "product": {
+    "overview": "Übersicht",
     "issues": "Probleme",
     "projects": "Projekte",
     "setup": "Einrichtung",

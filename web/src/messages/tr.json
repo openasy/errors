@@ -1,4 +1,17 @@
 {
+  "overviewPage": {
+    "overview": "Genel bakış",
+    "byLevel": "Seviyeye göre çözülmemiş",
+    "byLevelDetail": "Olaylarının bildirdiği seviyeye göre çözülmemiş hatalar.",
+    "unresolved": "çözülmemiş",
+    "newIssues": "Yeni hatalar",
+    "newIssuesDetail": "Son 14 günün her birinde ilk kez görülen hatalar.",
+    "byProject": "Projeye göre çözülmemiş",
+    "byProjectDetail": "En çok çözülmemiş hatası olan projeler.",
+    "busiest": "En yoğun hatalar",
+    "busiestDetail": "Son 7 günde en çok olayı olan çözülmemiş hatalar.",
+    "events7Days": "Olaylar, 7 gün"
+  },
   "statusLabel": {
     "regression": "Geri dönen hata",
     "resolved": "Çözüldü",
@@ -130,6 +143,7 @@
     "signOut": "Çıkış yap"
   },
   "product": {
+    "overview": "Genel bakış",
     "issues": "Sorunlar",
     "projects": "Projeler",
     "setup": "Kurulum",

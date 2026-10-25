@@ -290,3 +290,19 @@ describe("access", () => {
     await quiet.close();
   });
 });
+
+describe("the overview", () => {
+  it("counts new issues by day, unresolved by level and project, and the busiest issues", async () => {
+    const o = await json(await app.admin("/api/v1/overview"));
+    const s = await json(await app.admin("/api/v1/summary"));
+    expect(o.newIssues).toHaveLength(14);
+    expect(o.byLevel.reduce((n: number, l: { unresolved: number }) => n + l.unresolved, 0)).toBe(s.issues.unresolved);
+    // Eight projects at most, so the ones shown hold some of the unresolved issues, never more.
+    expect(o.byProject.length).toBeLessThanOrEqual(8);
+    expect(o.byProject.reduce((n: number, p: { unresolved: number }) => n + p.unresolved, 0)).toBeLessThanOrEqual(s.issues.unresolved);
+    expect(o.byProject[0].unresolved).toBeGreaterThanOrEqual(o.byProject.at(-1).unresolved);
+    expect(o.topIssues.length).toBeLessThanOrEqual(8);
+    for (const i of o.topIssues)
+      expect(i).toMatchObject({ id: expect.any(String), title: expect.any(String), project: expect.any(String), events7d: expect.any(Number) });
+  });
+});

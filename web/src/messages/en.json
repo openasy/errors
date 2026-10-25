@@ -1,4 +1,17 @@
 {
+  "overviewPage": {
+    "overview": "Overview",
+    "byLevel": "Unresolved by level",
+    "byLevelDetail": "Unresolved issues by the level their events report.",
+    "unresolved": "unresolved",
+    "newIssues": "New issues",
+    "newIssuesDetail": "Issues first seen on each of the last 14 days.",
+    "byProject": "Unresolved by project",
+    "byProjectDetail": "The projects with the most unresolved issues.",
+    "busiest": "Busiest issues",
+    "busiestDetail": "Unresolved issues with the most events in the last 7 days.",
+    "events7Days": "Events, 7 days"
+  },
   "statusLabel": {
     "regression": "Regression",
     "resolved": "Resolved",
@@ -130,6 +143,7 @@
     "signOut": "Sign out"
   },
   "product": {
+    "overview": "Overview",
     "issues": "Issues",
     "projects": "Projects",
     "setup": "Setup",

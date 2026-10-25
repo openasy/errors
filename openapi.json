@@ -906,6 +906,49 @@
         "x-openasy-role": "viewer"
       }
     },
+    "/api/v1/overview": {
+      "get": {
+        "operationId": "getOverview",
+        "tags": [
+          "Product"
+        ],
+        "summary": "What the overview draws",
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiToken": []
+          },
+          {
+            "adminToken": []
+          }
+        ],
+        "description": "Issues first seen on each of the last 14 days, unresolved issues by level and by project, and the unresolved issues with the most events in the last 7 days.\n\nNeeds the viewer role.",
+        "responses": {
+          "200": {
+            "description": "What the overview draws.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Overview"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem"
+          }
+        },
+        "x-openasy-role": "viewer"
+      }
+    },
     "/api/v1/version": {
       "get": {
         "operationId": "getVersion",
@@ -1987,6 +2030,129 @@
             "events": {
               "type": "integer"
             }
+          }
+        }
+      },
+      "Overview": {
+        "type": "object",
+        "required": [
+          "newIssues",
+          "byLevel",
+          "byProject",
+          "topIssues"
+        ],
+        "properties": {
+          "newIssues": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "day",
+                "issues"
+              ],
+              "properties": {
+                "day": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "issues": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "description": "Oldest first; the last is today (UTC)."
+          },
+          "byLevel": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "level",
+                "unresolved"
+              ],
+              "properties": {
+                "level": {
+                  "type": "string"
+                },
+                "unresolved": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
+          },
+          "byProject": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "name",
+                "unresolved"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "unresolved": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "description": "Most first; eight at most."
+          },
+          "topIssues": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "title",
+                "culprit",
+                "level",
+                "project",
+                "users",
+                "regression",
+                "events7d"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "culprit": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "level": {
+                  "type": "string"
+                },
+                "project": {
+                  "type": "string"
+                },
+                "users": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "regression": {
+                  "type": "boolean"
+                },
+                "events7d": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "description": "Eight at most."
           }
         }
       }

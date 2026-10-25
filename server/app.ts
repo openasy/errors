@@ -205,6 +205,7 @@ export function createApp({ db, errors, version, auth, adminToken, webDir, docsD
     { method: "GET", path: "/api/v1/version", auth: "none", handle: () => ({ product: "errors", version }) },
     { method: "GET", path: "/api/v1/products", auth: "viewer", handle: () => ({ products }) },
     { method: "GET", path: "/api/v1/summary", auth: "viewer", handle: () => errors.summary() },
+    { method: "GET", path: "/api/v1/overview", auth: "viewer", handle: () => errors.overview() },
 
     // Events in, from the application, with its project key.
     {

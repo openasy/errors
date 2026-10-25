@@ -109,3 +109,13 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   }
   return (res.status === 204 ? undefined : await res.json()) as T;
 }
+
+/** What the overview draws besides the summary (GET /api/v1/overview). */
+export interface Overview {
+  /** Issues first seen on each of the last 14 days (UTC), oldest first. */
+  newIssues: Array<{ day: string; issues: number }>;
+  byLevel: Array<{ level: string; unresolved: number }>;
+  byProject: Array<{ id: string; name: string; unresolved: number }>;
+  /** Unresolved issues with the most events in the last 7 days; eight at most. */
+  topIssues: Array<{ id: string; title: string; culprit: string | null; level: string; project: string; users: number; regression: boolean; events7d: number }>;
+}

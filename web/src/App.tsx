@@ -22,17 +22,39 @@ import {
   TextField,
   TimeSeriesChart,
   usePath,
-  type Column,
-  type ProductId,
-  type Severity as UiSeverity,
   useThemePreference,
   useAgo,
   toLocale,
   useLocalePreference,
+  BarList,
+  DonutChart,
+  OverviewGrid,
+  SEVERITY_META,
+  StackedBarChart,
+  TONE_COLORS,
+  type Column,
+  type ProductId,
+  type Severity as UiSeverity,
 } from "@openasy/ui";
 import { AccountSettings, AuthGate, MembersSettings, SignInSettings, TokensSettings, useAccountMenu, useAuth, useInstallBrand } from "@openasy/auth/react";
 import colophon from "virtual:openasy-colophon";
-import { Bug, FolderKanban, KeyRound, LogIn, LogOut, Plus, RefreshCw, Trash2, UserRound, Users } from "lucide-react";
+import {
+  Activity,
+  Bug,
+  CircleCheck,
+  EyeOff,
+  FolderKanban,
+  KeyRound,
+  LayoutDashboard,
+  LogIn,
+  LogOut,
+  Plus,
+  RefreshCw,
+  RotateCcw,
+  Trash2,
+  UserRound,
+  Users,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import {
   api,
@@ -44,6 +66,7 @@ import {
   type IssueDetail,
   type IssueStatus,
   type Level,
+  type Overview,
   type ProductLink,
   type Project,
   type Release,
@@ -56,14 +79,15 @@ import { search } from "./search.ts";
 const LEVEL: Record<Level, UiSeverity> = { fatal: "critical", error: "high", warning: "medium", info: "low", debug: "info" };
 
 const PAGES = ["projects", "setup", "account", "members", "signin", "tokens", "about"] as const;
-type Route = { page: "issues" | (typeof PAGES)[number] } | { page: "issue"; id: string };
+type Route = { page: "overview" | "issues" | (typeof PAGES)[number] } | { page: "issue"; id: string };
 /** The first path segments that are pages of this UI, for followLinks. */
-export const PATHS = ["issues", ...PAGES];
+export const PATHS = ["overview", "issues", ...PAGES];
 function parseRoute(path: string): Route {
   const [page, id] = path.replace(/^\//, "").split("/");
   if (page === "issues" && id) return { page: "issue", id: decodeURIComponent(id) };
   if ((PAGES as readonly string[]).includes(page ?? "")) return { page: page as (typeof PAGES)[number] };
-  return { page: "issues" };
+  if (page === "issues") return { page: "issues" };
+  return { page: "overview" };
 }
 
 /** Data loading with the session; when it ends, the sign-in screen comes back. */
@@ -99,6 +123,122 @@ function StatusLabel({ issue }: { issue: Pick<Issue, "status" | "regression"> })
 // ---------------------------------------------------------------- Issues
 
 type Sort = "lastSeen" | "events" | "users" | "firstSeen";
+
+function OverviewPage({ call, summary }: { call: Call; summary?: Summary }) {
+  const ago = useAgo();
+  const t = useT();
+  const [o, setO] = useState<Overview>();
+  useEffect(() => void call<Overview>("/api/v1/overview").then(setO, () => {}), [call, summary]);
+  const s = summary;
+  const day = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
+  const color = (l: string) => (l in LEVEL ? TONE_COLORS[SEVERITY_META[LEVEL[l as Level]].tone] : TONE_COLORS.neutral);
+  const columns: Column<Overview["topIssues"][number]>[] = [
+    {
+      id: "level",
+      header: t("issuesPage.level"),
+      width: "96px",
+      cell: (i) => (i.level in LEVEL ? <SeverityBadge severity={LEVEL[i.level as Level]} /> : i.level),
+    },
+    {
+      id: "issue",
+      header: t("issuesPage.issue"),
+      cell: (i) => (
+        <span className="flex min-w-0 flex-col">
+          <span className="flex flex-wrap items-center gap-1.5">
+            <a href={`/issues/${i.id}`} className="font-medium">
+              {i.title}
+            </a>
+            {i.regression && <Badge tone="danger">{t("issuesPage.regressions")}</Badge>}
+          </span>
+          {i.culprit && <span className="truncate font-mono text-xs text-fg-muted">{i.culprit}</span>}
+        </span>
+      ),
+    },
+    { id: "project", header: t("issuesPage.project"), width: "140px", cell: (i) => <span className="text-xs">{i.project}</span> },
+    { id: "events", header: t("overviewPage.events7Days"), width: "120px", align: "right", cell: (i) => i.events7d },
+    { id: "users", header: t("issuesPage.users"), width: "90px", align: "right", cell: (i) => i.users },
+  ];
+  return (
+    <>
+      <PageHeader
+        title={t("overviewPage.overview")}
+        description={
+          s
+            ? t("issuesPage.inTheLastDayLast", {
+                plural: t("plurals.project", { count: s.projects }),
+                plural2: t("plurals.event", { count: s.events24h }),
+                ago: ago(s.lastEventAt),
+              })
+            : undefined
+        }
+      />
+      {s && (
+        <KpiGrid minWidth={150}>
+          <KpiCard
+            label={t("issuesPage.unresolved")}
+            value={s.issues.unresolved}
+            icon={Bug}
+            tone={s.issues.unresolved ? "warning" : "success"}
+            trend={o?.newIssues.map((d) => d.issues)}
+            trendColor={TONE_COLORS.warning}
+            href="/issues"
+          />
+          <KpiCard label={t("issuesPage.regressions")} value={s.regressions} icon={RotateCcw} tone={s.regressions ? "danger" : "success"} href="/issues" />
+          <KpiCard label={t("issuesPage.events24Hours")} value={s.events24h} icon={Activity} tone="info" trend={s.days.map((d) => d.events)} />
+          <KpiCard label={t("issuesPage.resolved")} value={s.issues.resolved} icon={CircleCheck} />
+          <KpiCard label={t("issuesPage.ignored")} value={s.issues.ignored} icon={EyeOff} />
+        </KpiGrid>
+      )}
+      {s && (
+        <OverviewGrid>
+          <Panel title={t("issuesPage.eventsOverTime")} description={t("issuesPage.eachDayOfTheLast")}>
+            <DailyEvents label={t("issuesPage.eventsEachDayOfThe")} days={s.days} />
+          </Panel>
+          <Panel title={t("overviewPage.byLevel")} description={t("overviewPage.byLevelDetail")}>
+            {o && o.byLevel.length ? (
+              <DonutChart
+                label={t("overviewPage.byLevel")}
+                caption={t("overviewPage.unresolved")}
+                slices={o.byLevel.map((l) => ({ id: l.level, name: l.level, value: l.unresolved, color: color(l.level), href: "/issues" }))}
+              />
+            ) : (
+              <EmptyState title={t("issuesPage.noUnresolvedIssues")} />
+            )}
+          </Panel>
+        </OverviewGrid>
+      )}
+      {o && (
+        <OverviewGrid>
+          <Panel title={t("overviewPage.newIssues")} description={t("overviewPage.newIssuesDetail")}>
+            <StackedBarChart
+              label={t("overviewPage.newIssues")}
+              categories={o.newIssues.map((d) => day(d.day))}
+              segments={[{ id: "issues", name: t("overviewPage.newIssues"), color: TONE_COLORS.warning }]}
+              values={o.newIssues.map((d) => [d.issues])}
+              height={170}
+              xTicks={7}
+            />
+          </Panel>
+          <Panel title={t("overviewPage.byProject")} description={t("overviewPage.byProjectDetail")}>
+            {o.byProject.length ? (
+              <BarList
+                label={t("overviewPage.byProject")}
+                items={o.byProject.map((p) => ({ id: p.id, label: p.name, value: p.unresolved, href: "/issues" }))}
+              />
+            ) : (
+              <EmptyState title={t("issuesPage.noUnresolvedIssues")} />
+            )}
+          </Panel>
+        </OverviewGrid>
+      )}
+      {o && o.topIssues.length > 0 && (
+        <Panel title={t("overviewPage.busiest")} description={t("overviewPage.busiestDetail")} flush>
+          <DataTable label={t("overviewPage.busiest")} rows={o.topIssues} columns={columns} getRowId={(i) => i.id} />
+        </Panel>
+      )}
+    </>
+  );
+}
 
 function IssuesPage({ call, summary }: { call: Call; summary?: Summary }) {
   const ago = useAgo();
@@ -200,20 +340,6 @@ function IssuesPage({ call, summary }: { call: Call; summary?: Summary }) {
         }
         actions={<SearchInput label={t("issuesPage.searchTitleOrCode")} className="w-64" value={q} onChange={(e) => setQ(e.target.value)} />}
       />
-      {s && (
-        <KpiGrid minWidth={150}>
-          <KpiCard label={t("issuesPage.unresolved")} value={s.issues.unresolved} tone={s.issues.unresolved ? "warning" : "success"} />
-          <KpiCard label={t("issuesPage.regressions")} value={s.regressions} tone={s.regressions ? "danger" : "success"} />
-          <KpiCard label={t("issuesPage.resolved")} value={s.issues.resolved} />
-          <KpiCard label={t("issuesPage.ignored")} value={s.issues.ignored} />
-          <KpiCard label={t("issuesPage.events24Hours")} value={s.events24h} tone="info" />
-        </KpiGrid>
-      )}
-      {s && (
-        <Panel title={t("issuesPage.eventsOverTime")} description={t("issuesPage.eachDayOfTheLast")}>
-          <DailyEvents label={t("issuesPage.eventsEachDayOfThe")} days={s.days} />
-        </Panel>
-      )}
       <Tabs<IssueStatus>
         label={t("issuesPage.issueViews")}
         value={tab}
@@ -769,6 +895,7 @@ function Product() {
   }, [reload]);
 
   const nav = [
+    { id: "overview", label: msg("product.overview"), icon: LayoutDashboard },
     { id: "issues", label: msg("product.issues"), icon: Bug, count: summary?.issues.unresolved },
     { id: "projects", label: msg("product.projects"), icon: FolderKanban, count: summary?.projects },
   ];
@@ -805,8 +932,10 @@ function Product() {
       onThemeChange={setTheme}
       onLanguageChange={(code) => setLocale(toLocale(code))}
     >
-      {route.page === "issues" && summary && summary.projects === 0 ? (
+      {(route.page === "overview" || route.page === "issues") && summary && summary.projects === 0 ? (
         <WelcomePage />
+      ) : route.page === "overview" ? (
+        <OverviewPage call={call} summary={summary} />
       ) : route.page === "issues" ? (
         <IssuesPage call={call} summary={summary} />
       ) : route.page === "issue" ? (
