@@ -16,6 +16,8 @@ export interface Summary {
   events24h: number;
   lastEventAt: string | null;
   days: EventDay[];
+  /** Every environment an issue was seen in. */
+  environments: string[];
 }
 
 /** Events on one day (UTC); a list of them runs over the last 14 days, oldest first. */

@@ -1911,7 +1911,8 @@
           "regressions",
           "events24h",
           "lastEventAt",
-          "days"
+          "days",
+          "environments"
         ],
         "additionalProperties": false,
         "properties": {
@@ -1958,6 +1959,13 @@
           },
           "days": {
             "$ref": "#/components/schemas/EventDays"
+          },
+          "environments": {
+            "type": "array",
+            "description": "Every environment an issue was seen in, for the issue list's filter.",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },

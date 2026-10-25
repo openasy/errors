@@ -138,6 +138,7 @@ describe("events become issues", () => {
     expect((await json(await app.admin(`/api/v1/issues?project=${p.id}&release=1.1.0`))).issues).toHaveLength(2);
     expect((await json(await app.admin(`/api/v1/issues?project=${p.id}&release=1.0.0`))).issues).toHaveLength(1);
     expect((await json(await app.admin(`/api/v1/issues?project=${p.id}&environment=staging`))).issues).toHaveLength(1);
+    expect((await json(await app.admin("/api/v1/summary"))).environments).toEqual(expect.arrayContaining(["production", "staging"]));
     const releases = (await json(await app.admin(`/api/v1/releases?project=${p.id}`))).releases;
     expect(releases.map((r: { release: string; newIssues: number; issues: number }) => [r.release, r.newIssues, r.issues]).sort()).toEqual([
       ["1.0.0", 1, 1],

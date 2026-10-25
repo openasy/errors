@@ -394,6 +394,9 @@ export function createErrors(db: DatabaseSync, { retentionDays = 90, defaultRate
         events24h: (db.prepare("SELECT COALESCE(SUM(events), 0) AS n FROM issues WHERE last_seen > ?").get(day) as { n: number }).n,
         lastEventAt: (db.prepare("SELECT MAX(last_seen) AS t FROM issues").get() as { t: string | null }).t,
         days: daily(db, clock()),
+        environments: (db.prepare("SELECT DISTINCT environment FROM issue_environments ORDER BY environment").all() as Array<{ environment: string }>).map(
+          (e) => e.environment,
+        ),
       };
     },
     projectCount: () => (db.prepare("SELECT COUNT(*) AS n FROM projects").get() as { n: number }).n,

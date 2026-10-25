@@ -15,7 +15,7 @@ import {
   Panel,
   PRODUCT_IDS,
   SearchInput,
-  SelectField,
+  SegmentedControl,
   SeverityBadge,
   StatusBadge,
   Tabs,
@@ -46,6 +46,7 @@ import {
   type Level,
   type ProductLink,
   type Project,
+  type Release,
   type Summary,
 } from "./api.ts";
 import { useT } from "./i18n.ts";
@@ -119,13 +120,27 @@ function IssuesPage({ call, summary }: { call: Call; summary?: Summary }) {
       ),
     [call],
   );
+  // The releases of the chosen project, or of all of them; a release name two projects share is one choice.
+  const [releases, setReleases] = useState<Array<{ release: string; issues: number }>>([]);
+  useEffect(() => {
+    const p = new URLSearchParams({ limit: "500" });
+    if (project) p.set("project", project);
+    void call<{ releases: Release[] }>(`/api/v1/releases?${p}`).then(
+      (r) => {
+        const issues = new Map<string, number>();
+        for (const x of r.releases) issues.set(x.release, (issues.get(x.release) ?? 0) + x.issues);
+        setReleases([...issues].map(([release, n]) => ({ release, issues: n })));
+      },
+      () => setReleases([]),
+    );
+  }, [call, project]);
 
   const query = useCallback(
     (cursor?: string) => {
       const p = new URLSearchParams({ status: tab, sort, limit: "100" });
       if (project) p.set("project", project);
-      if (environment.trim()) p.set("environment", environment.trim());
-      if (release.trim()) p.set("release", release.trim());
+      if (environment) p.set("environment", environment);
+      if (release) p.set("release", release);
       if (q.trim()) p.set("q", q.trim());
       if (cursor) p.set("cursor", cursor);
       return call<{ issues: Issue[]; nextCursor?: string }>(`/api/v1/issues?${p}`);
@@ -216,22 +231,36 @@ function IssuesPage({ call, summary }: { call: Call; summary?: Summary }) {
           onChange={(v) => setProject(v[v.length - 1] ?? "")}
           options={projects.map((p) => ({ value: p.id, label: p.name, count: p.unresolved }))}
         />
-        <TextField label={t("issuesPage.environment")} value={environment} onChange={(e) => setEnvironment(e.target.value)} />
-        <TextField label={t("issuesPage.release")} value={release} onChange={(e) => setRelease(e.target.value)} />
-        <SelectField
-          label={t("issuesPage.sortBy")}
-          value={sort}
-          onChange={(e) => setSort(e.target.value as Sort)}
-          options={[
-            { value: "lastSeen", label: t("issuesPage.lastSeen") },
-            { value: "events", label: t("issuesPage.mostEvents") },
-            { value: "users", label: t("issuesPage.mostUsers") },
-            { value: "firstSeen", label: t("issuesPage.newest") },
-          ]}
+        <FacetFilter
+          label={t("issuesPage.environment")}
+          selected={environment ? [environment] : []}
+          onChange={(v) => setEnvironment(v[v.length - 1] ?? "")}
+          options={(summary?.environments ?? []).map((e) => ({ value: e }))}
+        />
+        <FacetFilter
+          label={t("issuesPage.release")}
+          selected={release ? [release] : []}
+          onChange={(v) => setRelease(v[v.length - 1] ?? "")}
+          options={releases.map((r) => ({ value: r.release, count: r.issues }))}
+          searchable={releases.length > 8}
         />
       </FilterBar>
       <Panel
         title={tab === "unresolved" ? t("issuesPage.unresolved") : tab === "resolved" ? t("issuesPage.resolved") : t("issuesPage.ignored")}
+        actions={
+          <SegmentedControl
+            label={t("issuesPage.sortBy")}
+            size="sm"
+            value={sort}
+            onChange={setSort}
+            options={[
+              { value: "lastSeen", label: t("issuesPage.lastSeen") },
+              { value: "events", label: t("issuesPage.mostEvents") },
+              { value: "users", label: t("issuesPage.mostUsers") },
+              { value: "firstSeen", label: t("issuesPage.newest") },
+            ]}
+          />
+        }
         flush
         footer={
           more ? (
