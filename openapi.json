@@ -1657,7 +1657,8 @@
             "required": [
               "environments",
               "releases",
-              "latestEvents"
+              "latestEvents",
+              "days"
             ],
             "properties": {
               "environments": {
@@ -1815,6 +1816,9 @@
                     }
                   }
                 }
+              },
+              "days": {
+                "$ref": "#/components/schemas/EventDays"
               }
             }
           }
@@ -1906,7 +1910,8 @@
           "issues",
           "regressions",
           "events24h",
-          "lastEventAt"
+          "lastEventAt",
+          "days"
         ],
         "additionalProperties": false,
         "properties": {
@@ -1950,6 +1955,30 @@
                 "format": "date-time"
               }
             ]
+          },
+          "days": {
+            "$ref": "#/components/schemas/EventDays"
+          }
+        }
+      },
+      "EventDays": {
+        "type": "array",
+        "description": "Events on each of the last 14 days (UTC), oldest first. Counted as events arrive, so days before the count was added show 0.",
+        "items": {
+          "type": "object",
+          "required": [
+            "day",
+            "events"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "day": {
+              "type": "string",
+              "format": "date"
+            },
+            "events": {
+              "type": "integer"
+            }
           }
         }
       }

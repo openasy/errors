@@ -70,6 +70,14 @@ const MIGRATIONS = [
      new_issues INTEGER NOT NULL DEFAULT 0,
      PRIMARY KEY (project_id, release)
    )`,
+  // Events of each issue on each day (UTC), counted as they arrive: only the latest events themselves are kept.
+  `CREATE TABLE issue_days (
+     issue_id TEXT NOT NULL REFERENCES issues (id) ON DELETE CASCADE,
+     day TEXT NOT NULL,
+     events INTEGER NOT NULL,
+     PRIMARY KEY (issue_id, day)
+   );
+   CREATE INDEX issue_days_day ON issue_days (day)`,
 ];
 
 /** Opens the product's single SQLite file in WAL mode (ADR 0011) and migrates it forward. */

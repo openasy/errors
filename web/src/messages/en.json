@@ -22,6 +22,9 @@
     "resolved": "Resolved",
     "ignored": "Ignored",
     "events24Hours": "Events, 24 hours",
+    "eventsOverTime": "Events over time",
+    "eachDayOfTheLast": "Each day of the last 14, in UTC.",
+    "eventsEachDayOfThe": "Events each day of the last 14",
     "issueViews": "Issue views",
     "environment": "Environment",
     "release": "Release",
@@ -52,6 +55,9 @@
     "users": "Users",
     "firstSeen": "First seen",
     "lastSeen": "Last seen",
+    "eventsOverTime": "Events over time",
+    "eachDayOfTheLast": "Each day of the last 14, in UTC.",
+    "eventsOfThisIssueEach": "Events of this issue each day of the last 14",
     "fixMeantFor": "fix meant for {{resolvedIn}}",
     "cameBack": "came back",
     "in": " in {{in}}",
@@ -137,5 +143,14 @@
     "project_other": "{{count}} projects",
     "event_one": "{{count}} event",
     "event_other": "{{count}} events"
+  },
+  "dailyEvents": {
+    "events": "Events"
+  },
+  "search": {
+    "issue": "Issue",
+    "project": "Project",
+    "issueDetail": "{{culprit}} · {{project}} · {{events}} events",
+    "projectDetail": "{{unresolved}} unresolved"
   }
 }

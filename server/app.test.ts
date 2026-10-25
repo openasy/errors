@@ -104,6 +104,24 @@ describe("events become issues", () => {
     expect(issue.latestEvents.at(-1).timestamp).toBe(at(5));
   });
 
+  it("counts the events of each day, of an issue and of all of them", async () => {
+    const p = await app.project("daily", 1000);
+    const before = (await json(await app.admin("/api/v1/summary"))).days;
+    const today = new Date(app.clock()).toISOString().slice(0, 10);
+    const yesterday = new Date(app.clock() - 86_400_000).toISOString().slice(0, 10);
+    let id = "";
+    for (const timestamp of [`${yesterday}T12:00:00.000Z`, `${today}T00:00:00.000Z`, `${today}T00:00:01.000Z`])
+      id = (await json(await app.send(p.key, { message: "Daily job failed", timestamp }))).issue.id;
+    const issue = await json(await app.admin(`/api/v1/issues/${id}`));
+    expect(issue.days).toHaveLength(14);
+    expect(issue.days.slice(-2)).toEqual([
+      { day: yesterday, events: 1 },
+      { day: today, events: 2 },
+    ]);
+    const after = (await json(await app.admin("/api/v1/summary"))).days;
+    expect(after.at(-1)).toEqual({ day: today, events: before.at(-1).events + 2 });
+  });
+
   it("tracks releases, environments and where an issue appeared", async () => {
     const p = await app.project("api");
     const send = (release: string, env: string, over: object = {}) =>

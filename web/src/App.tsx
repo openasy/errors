@@ -20,22 +20,26 @@ import {
   StatusBadge,
   Tabs,
   TextField,
+  TimeSeriesChart,
   usePath,
   type Column,
   type ProductId,
   type Severity as UiSeverity,
   useThemePreference,
   useAgo,
+  toLocale,
+  useLocalePreference,
 } from "@openasy/ui";
-import { AccountSettings, AuthGate, MembersSettings, SignInSettings, TokensSettings, useAuth, useInstallBrand } from "@openasy/auth/react";
+import { AccountSettings, AuthGate, MembersSettings, SignInSettings, TokensSettings, useAccountMenu, useAuth, useInstallBrand } from "@openasy/auth/react";
 import colophon from "virtual:openasy-colophon";
-import { Bug, FolderKanban, KeyRound, LogIn, LogOut, Plus, RefreshCw, Settings2, Trash2, UserRound, Users } from "lucide-react";
-import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { Bug, FolderKanban, KeyRound, LogIn, LogOut, Plus, RefreshCw, Trash2, UserRound, Users } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import {
   api,
   MfaSetupRequired,
   Unauthorized,
   type Frame,
+  type EventDay,
   type Issue,
   type IssueDetail,
   type IssueStatus,
@@ -45,6 +49,7 @@ import {
   type Summary,
 } from "./api.ts";
 import { useT } from "./i18n.ts";
+import { search } from "./search.ts";
 
 // Five levels of an application become the shared scale of four plus info.
 const LEVEL: Record<Level, UiSeverity> = { fatal: "critical", error: "high", warning: "medium", info: "low", debug: "info" };
@@ -189,6 +194,11 @@ function IssuesPage({ call, summary }: { call: Call; summary?: Summary }) {
           <KpiCard label={t("issuesPage.events24Hours")} value={s.events24h} tone="info" />
         </KpiGrid>
       )}
+      {s && (
+        <Panel title={t("issuesPage.eventsOverTime")} description={t("issuesPage.eachDayOfTheLast")}>
+          <DailyEvents label={t("issuesPage.eventsEachDayOfThe")} days={s.days} />
+        </Panel>
+      )}
       <Tabs<IssueStatus>
         label={t("issuesPage.issueViews")}
         value={tab}
@@ -278,6 +288,20 @@ function StackTrace({ frames }: { frames: Frame[] }) {
   );
 }
 
+/** Events each day of the last 14, as a line. */
+function DailyEvents({ label, days }: { label: string; days: EventDay[] }) {
+  const t = useT();
+  return (
+    <TimeSeriesChart
+      label={label}
+      series={[{ id: "events", name: t("dailyEvents.events"), data: days.map((d) => d.events) }]}
+      labels={days.map((d) => new Date(`${d.day}T00:00:00Z`).toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" }))}
+      height={140}
+      xTicks={7}
+    />
+  );
+}
+
 function IssuePage({ call, id, reload }: { call: Call; id: string; reload: () => void }) {
   const ago = useAgo();
   const t = useT();
@@ -317,7 +341,7 @@ function IssuePage({ call, id, reload }: { call: Call; id: string; reload: () =>
     <>
       <PageHeader
         title={issue?.title ?? t("issuePage.issue")}
-        description={issue ? `${issue.project.name} · ${issue.culprit ?? "no stack trace"}` : undefined}
+        description={issue ? `${issue.project.name} · ${issue.culprit ?? t("issuesPage.noStackTrace")}` : undefined}
         actions={
           issue &&
           can("editor") && (
@@ -351,6 +375,9 @@ function IssuePage({ call, id, reload }: { call: Call; id: string; reload: () =>
             <KpiCard label={t("issuePage.firstSeen")} value={ago(issue.firstSeen)} />
             <KpiCard label={t("issuePage.lastSeen")} value={ago(issue.lastSeen)} />
           </KpiGrid>
+          <Panel title={t("issuePage.eventsOverTime")} description={t("issuePage.eachDayOfTheLast")}>
+            <DailyEvents label={t("issuePage.eventsOfThisIssueEach")} days={issue.days} />
+          </Panel>
           <div className="flex flex-wrap items-center gap-1.5">
             <SeverityBadge severity={LEVEL[issue.level]} />
             <StatusLabel issue={issue} />
@@ -687,11 +714,14 @@ function SettingsPage({ page }: { page: "account" | "members" | "signin" | "toke
 function Product() {
   const msg = useT();
   const [theme, setTheme] = useThemePreference();
+  const [, setLocale] = useLocalePreference();
   const { me, can } = useAuth();
+  const account = useAccountMenu();
   const route = parseRoute(usePath());
   const [summary, setSummary] = useState<Summary>();
   const [products, setProducts] = useState<Array<ProductLink & { id: ProductId }>>([]);
   const call = useApi();
+  const onSearch = useMemo(() => search(call, msg), [call, msg]);
 
   // The install's other products (OPENASY_PRODUCTS), for the switcher; ids this UI does not know are left out.
   useEffect(() => {
@@ -714,7 +744,6 @@ function Product() {
     { id: "projects", label: msg("product.projects"), icon: FolderKanban, count: summary?.projects },
   ];
   const footerNav = [
-    { id: "setup", label: msg("product.setup"), icon: Settings2 },
     ...(can("admin")
       ? [
           { id: "members", label: msg("product.members"), icon: Users },
@@ -730,6 +759,7 @@ function Product() {
   return (
     <AppShell
       product="errors"
+      onSearch={onSearch}
       about={colophon}
       nav={nav}
       activeNav={active}
@@ -739,10 +769,12 @@ function Product() {
         const to = products.find((p) => p.id === id);
         if (to) window.location.assign(to.url);
       }}
-      footerNav={footerNav}
-      user={{ name: me.user.name, role: roleName }}
+      footerNav={account.settings(footerNav)}
+      setup
+      user={{ name: me.user.name, role: roleName, ...account.user }}
       theme={theme}
       onThemeChange={setTheme}
+      onLanguageChange={(code) => setLocale(toLocale(code))}
     >
       {route.page === "issues" && summary && summary.projects === 0 ? (
         <WelcomePage />
@@ -764,9 +796,10 @@ function Product() {
 export function App() {
   const installBrand = useInstallBrand();
   const [theme] = useThemePreference();
+  const [locale] = useLocalePreference();
   return (
     // The install's brand from config/brand.env (ADR 0053); OpenAsy's own look where it sets none.
-    <BrandProvider theme={theme} brand={{ name: "OpenAsy", organization: undefined, ...installBrand }} className="min-h-screen">
+    <BrandProvider theme={theme} locale={locale} brand={{ name: "OpenAsy", organization: undefined, ...installBrand }} className="min-h-screen">
       <AuthGate product="OpenAsy Errors">
         <Product />
       </AuthGate>

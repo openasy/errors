@@ -275,6 +275,10 @@ export function createErrors(db: DatabaseSync, { retentionDays = 90, defaultRate
           Object.keys(event.tags).length ? JSON.stringify(event.tags) : null,
           event.request ? JSON.stringify(event.request) : null,
         );
+        db.prepare("INSERT INTO issue_days (issue_id, day, events) VALUES (?, ?, 1) ON CONFLICT (issue_id, day) DO UPDATE SET events = events + 1").run(
+          issueId,
+          event.timestamp.slice(0, 10),
+        );
         db.prepare(
           "DELETE FROM events WHERE issue_id = ? AND id NOT IN (SELECT id FROM events WHERE issue_id = ? ORDER BY timestamp DESC, rowid DESC LIMIT ?)",
         ).run(issueId, issueId, EVENTS_PER_ISSUE);
@@ -333,7 +337,7 @@ export function createErrors(db: DatabaseSync, { retentionDays = 90, defaultRate
       const environments = (
         db.prepare("SELECT environment FROM issue_environments WHERE issue_id = ? ORDER BY environment").all(id) as Array<{ environment: string }>
       ).map((e) => e.environment);
-      return { ...presentIssue(i), environments, releases, latestEvents: events };
+      return { ...presentIssue(i), environments, releases, latestEvents: events, days: daily(db, clock(), id) };
     },
 
     /** Resolve (optionally in a release), ignore, or open again. */
@@ -389,6 +393,7 @@ export function createErrors(db: DatabaseSync, { retentionDays = 90, defaultRate
         regressions: (db.prepare("SELECT COUNT(*) AS n FROM issues WHERE status = 'unresolved' AND regression = 1").get() as { n: number }).n,
         events24h: (db.prepare("SELECT COALESCE(SUM(events), 0) AS n FROM issues WHERE last_seen > ?").get(day) as { n: number }).n,
         lastEventAt: (db.prepare("SELECT MAX(last_seen) AS t FROM issues").get() as { t: string | null }).t,
+        days: daily(db, clock()),
       };
     },
     projectCount: () => (db.prepare("SELECT COUNT(*) AS n FROM projects").get() as { n: number }).n,
@@ -402,8 +407,33 @@ export function createErrors(db: DatabaseSync, { retentionDays = 90, defaultRate
       const before = new Date(clock() - retentionDays * 86_400_000).toISOString();
       db.prepare("DELETE FROM issues WHERE last_seen < ?").run(before);
       db.prepare("DELETE FROM events WHERE timestamp < ?").run(before);
+      db.prepare("DELETE FROM issue_days WHERE day < ?").run(before.slice(0, 10));
     },
   };
 }
 
 export type Errors = ReturnType<typeof createErrors>;
+
+const DAY = 86_400_000;
+
+/** The dates (UTC) of the last n days, today last. */
+export function lastDays(n: number, now: number): string[] {
+  const today = Math.floor(now / DAY) * DAY;
+  return Array.from({ length: n }, (_, i) => new Date(today - (n - 1 - i) * DAY).toISOString().slice(0, 10));
+}
+
+/** Events on each of the last 14 days, of every issue or of one, oldest first. */
+function daily(db: DatabaseSync, now: number, issueId?: string) {
+  const days = lastDays(14, now).map((day) => ({ day, events: 0 }));
+  const at = new Map(days.map((d) => [d.day, d]));
+  const rows = (
+    issueId
+      ? db.prepare("SELECT day, events AS n FROM issue_days WHERE issue_id = ? AND day >= ?").all(issueId, days[0]!.day)
+      : db.prepare("SELECT day, SUM(events) AS n FROM issue_days WHERE day >= ? GROUP BY day").all(days[0]!.day)
+  ) as Array<{ day: string; n: number }>;
+  for (const r of rows) {
+    const d = at.get(r.day);
+    if (d) d.events = r.n;
+  }
+  return days;
+}

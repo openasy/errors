@@ -15,6 +15,13 @@ export interface Summary {
   regressions: number;
   events24h: number;
   lastEventAt: string | null;
+  days: EventDay[];
+}
+
+/** Events on one day (UTC); a list of them runs over the last 14 days, oldest first. */
+export interface EventDay {
+  day: string;
+  events: number;
 }
 
 export interface Project {
@@ -69,6 +76,7 @@ export interface IssueDetail extends Issue {
   environments: string[];
   releases: Array<{ release: string; firstSeen: string; lastSeen: string; events: number }>;
   latestEvents: IssueEvent[];
+  days: EventDay[];
 }
 
 export interface Release {
