@@ -72,7 +72,7 @@ import {
   type Release,
   type Summary,
 } from "./api.ts";
-import { useT } from "./i18n.ts";
+import { useT, viewerLocale, setViewerLocale } from "./i18n.ts";
 import { search } from "./search.ts";
 
 // Five levels of an application become the shared scale of four plus info.
@@ -130,7 +130,7 @@ function OverviewPage({ call, summary }: { call: Call; summary?: Summary }) {
   const [o, setO] = useState<Overview>();
   useEffect(() => void call<Overview>("/api/v1/overview").then(setO, () => {}), [call, summary]);
   const s = summary;
-  const day = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
+  const day = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString(viewerLocale(), { month: "short", day: "numeric", timeZone: "UTC" });
   const color = (l: string) => (l in LEVEL ? TONE_COLORS[SEVERITY_META[LEVEL[l as Level]].tone] : TONE_COLORS.neutral);
   const columns: Column<Overview["topIssues"][number]>[] = [
     {
@@ -450,7 +450,7 @@ function DailyEvents({ label, days }: { label: string; days: EventDay[] }) {
     <TimeSeriesChart
       label={label}
       series={[{ id: "events", name: t("dailyEvents.events"), data: days.map((d) => d.events) }]}
-      labels={days.map((d) => new Date(`${d.day}T00:00:00Z`).toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" }))}
+      labels={days.map((d) => new Date(`${d.day}T00:00:00Z`).toLocaleDateString(viewerLocale(), { month: "short", day: "numeric", timeZone: "UTC" }))}
       height={140}
       xTicks={7}
     />
@@ -955,6 +955,7 @@ export function App() {
   const installBrand = useInstallBrand();
   const [theme] = useThemePreference();
   const [locale] = useLocalePreference();
+  setViewerLocale(locale);
   return (
     // The install's brand from config/brand.env (ADR 0053); OpenAsy's own look where it sets none.
     <BrandProvider theme={theme} locale={locale} brand={{ name: "OpenAsy", organization: undefined, ...installBrand }} className="min-h-screen">
